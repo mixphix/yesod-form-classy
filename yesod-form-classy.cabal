@@ -34,6 +34,7 @@ library
 
   exposed-modules:
     Yesod.Form.Classy
+    Yesod.Form.Classy.Instances
 
   build-depends:
     , base
