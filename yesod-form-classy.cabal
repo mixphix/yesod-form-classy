@@ -1,0 +1,43 @@
+cabal-version:   3.0
+name:            yesod-form-classy
+version:         0.0.0
+license:         MIT
+license-file:    LICENSE
+author:          Melanie Brown
+maintainer:      brown.m@pm.me
+category:        Web
+build-type:      Simple
+extra-doc-files: CHANGELOG.md
+homepage:        https://github.com/mixphix/yesod-form-classy
+synopsis:        Type classes for working with HTML forms in Yesod
+description:
+  Please see the README at https://github.com/mixphix/yesod-form-classy
+
+library
+  default-language:   GHC2021
+  ghc-options:        -Wall -Wno-unticked-promoted-constructors
+  hs-source-dirs:     lib
+  default-extensions:
+    BlockArguments
+    DataKinds
+    DefaultSignatures
+    DerivingStrategies
+    LambdaCase
+    MultiWayIf
+    OverloadedStrings
+    PatternSynonyms
+    QuasiQuotes
+    RecordWildCards
+    TypeFamilies
+    TypeFamilyDependencies
+    ViewPatterns
+
+  exposed-modules:
+    Yesod.Form.Classy
+
+  build-depends:
+    , base
+    , containers
+    , mtl
+    , text
+    , yesod
