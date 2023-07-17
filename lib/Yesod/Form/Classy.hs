@@ -1,6 +1,7 @@
 module Yesod.Form.Classy
   ( InputField (..)
   , input
+  , select
   , Optionality (..)
   , OptionalityRepr (..)
   , KnownOptionality (..)
@@ -21,7 +22,7 @@ import Data.Functor ((<&>))
 import Data.Functor.Const (Const (..))
 import Data.Functor.Identity (Identity (..))
 import Data.Kind (Constraint, Type)
-import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty (NonEmpty (..), nonEmpty, toList)
 import Data.Map qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -179,6 +180,96 @@ input mshape config = do
       let inputs = Map.findWithDefault [] name allinputs
           files = Map.findWithDefault [] name allfiles
       lift (inputParse @app @opt @mul @x inputs files) <&> \case
+        Right x -> (FormSuccess x, Right x)
+        Left (SomeMessage e) ->
+          ( FormFailure [renderMessage site langs e]
+          , Left (Text.intercalate ", " inputs)
+          )
+
+select ::
+  forall opt mul x app.
+  ( KnownOptionality opt
+  , KnownMultiplicity mul
+  , RenderMessage app FormMessage
+  , Eq x
+  ) =>
+  OptionList x ->
+  Maybe (FormShape opt mul x) ->
+  [(Text, Text)] ->
+  MForm
+    (HandlerFor app)
+    (FormResult (FormShape opt mul x), WidgetFor app ())
+select options mshape config = do
+  let Const shapeattrs = shapeAttrs @opt @mul
+      selectParse ::
+        [Text] ->
+        HandlerFor app (Either (SomeMessage app) (FormShape opt mul x))
+      selectParse inputs = do
+        let parse = case options of
+              OptionList{..} -> olReadExternal
+              OptionListGrouped{..} -> olReadExternalGrouped
+        case (optionality @opt, multiplicity @mul) of
+          (RequiredRepr, SingleRepr) -> pure case inputs of
+            [] -> Left "input is required"
+            [x] -> case parse x of
+              Nothing -> Left $ SomeMessage ("unknown option: " <> x)
+              Just y -> Right (Identity y)
+            _ -> Left "multiple given when one expected"
+          (OptionalRepr, SingleRepr) -> pure case inputs of
+            [] -> Right Nothing
+            [x] -> case parse x of
+              Nothing -> Left $ SomeMessage ("unknown option: " <> x)
+              Just y -> Right (Just y)
+            _ -> Left "multiple given when one expected"
+          (RequiredRepr, MultipleRepr) -> pure case nonEmpty inputs of
+            Nothing -> Left "input is required"
+            Just xs ->
+              let results =
+                    xs <&> \x -> case parse x of
+                      Nothing -> Left $ SomeMessage ("unknown option: " <> x)
+                      Just y -> Right y
+               in sequence results
+          (OptionalRepr, MultipleRepr) -> do
+            let results =
+                  inputs <&> \x -> case parse x of
+                    Nothing -> Left $ SomeMessage ("unknown option: " <> x)
+                    Just y -> Right y
+            pure (sequence results)
+      selectView ::
+        (Eq x) =>
+        [(Text, Text)] ->
+        Either Text (FormShape opt mul x) ->
+        WidgetFor app ()
+      selectView attrs evalue = do
+        let selected :: x -> Bool = case evalue of
+              Left _ -> const False
+              Right val -> case (optionality @opt, multiplicity @mul) of
+                (RequiredRepr, SingleRepr) -> (== runIdentity val)
+                (OptionalRepr, SingleRepr) -> maybe (const False) (==) val
+                (RequiredRepr, MultipleRepr) -> flip elem (toList val)
+                (OptionalRepr, MultipleRepr) -> flip elem val
+        [whamlet|
+          <select *{attrs}>
+            $case options
+              $of OptionList{olOptions}
+                $forall option <- olOptions
+                  <option :selected option.optionInternalValue:selected value="#{option.optionExternalValue}">
+                    #{option.optionDisplay}
+              $of OptionListGrouped{olOptionsGrouped}
+                $forall (group, options) <- olOptionsGrouped
+                  <optgroup label="#{group}">
+                    $forall option <- options
+                      <option :selected option.optionInternalValue:selected value="#{option.optionExternalValue}">
+                        #{option.optionDisplay}
+        |]
+  tell UrlEncoded
+  (environment, site, langs) <- ask
+  name <- maybe newFormIdent pure (lookup "name" config)
+  fmap (selectView (shapeattrs <> config)) <$> case environment of
+    Nothing -> pure (FormMissing, maybe (Left "") Right mshape)
+    Just (allinputs, _) -> do
+      let inputs = Map.findWithDefault [] name allinputs
+      lift (selectParse inputs) <&> \case
         Right x -> (FormSuccess x, Right x)
         Left (SomeMessage e) ->
           ( FormFailure [renderMessage site langs e]
