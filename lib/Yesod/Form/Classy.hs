@@ -8,6 +8,11 @@ module Yesod.Form.Classy
   , MultiplicityRepr (..)
   , KnownMultiplicity (..)
   , FormShape
+  , formShapeFunctor
+  , formShapeFoldable
+  , formShapeTraversable
+  , formShapeApplicative
+  , formShapeMonad
   )
 where
 
@@ -70,6 +75,56 @@ type family FormShape opt mul = x | x -> opt mul where
   FormShape Optional Single = Maybe
   FormShape Required Multiple = NonEmpty
   FormShape Optional Multiple = []
+
+formShapeFunctor ::
+  forall opt mul.
+  (KnownOptionality opt, KnownMultiplicity mul) =>
+  (forall x. ((Functor (FormShape opt mul)) => x) -> x)
+formShapeFunctor x = case (optionality @opt, multiplicity @mul) of
+  (RequiredRepr, SingleRepr) -> x
+  (OptionalRepr, SingleRepr) -> x
+  (RequiredRepr, MultipleRepr) -> x
+  (OptionalRepr, MultipleRepr) -> x
+
+formShapeFoldable ::
+  forall opt mul.
+  (KnownOptionality opt, KnownMultiplicity mul) =>
+  (forall x. ((Foldable (FormShape opt mul)) => x) -> x)
+formShapeFoldable x = case (optionality @opt, multiplicity @mul) of
+  (RequiredRepr, SingleRepr) -> x
+  (OptionalRepr, SingleRepr) -> x
+  (RequiredRepr, MultipleRepr) -> x
+  (OptionalRepr, MultipleRepr) -> x
+
+formShapeTraversable ::
+  forall opt mul.
+  (KnownOptionality opt, KnownMultiplicity mul) =>
+  (forall x. ((Traversable (FormShape opt mul)) => x) -> x)
+formShapeTraversable x = case (optionality @opt, multiplicity @mul) of
+  (RequiredRepr, SingleRepr) -> x
+  (OptionalRepr, SingleRepr) -> x
+  (RequiredRepr, MultipleRepr) -> x
+  (OptionalRepr, MultipleRepr) -> x
+
+formShapeApplicative ::
+  forall opt mul.
+  (KnownOptionality opt, KnownMultiplicity mul) =>
+  (forall x. ((Applicative (FormShape opt mul)) => x) -> x)
+formShapeApplicative x = case (optionality @opt, multiplicity @mul) of
+  (RequiredRepr, SingleRepr) -> x
+  (OptionalRepr, SingleRepr) -> x
+  (RequiredRepr, MultipleRepr) -> x
+  (OptionalRepr, MultipleRepr) -> x
+
+formShapeMonad ::
+  forall opt mul.
+  (KnownOptionality opt, KnownMultiplicity mul) =>
+  (forall x. ((Monad (FormShape opt mul)) => x) -> x)
+formShapeMonad x = case (optionality @opt, multiplicity @mul) of
+  (RequiredRepr, SingleRepr) -> x
+  (OptionalRepr, SingleRepr) -> x
+  (RequiredRepr, MultipleRepr) -> x
+  (OptionalRepr, MultipleRepr) -> x
 
 shapeAttrs ::
   forall opt mul.
