@@ -41,4 +41,5 @@ library
     , containers
     , mtl
     , text
-    , yesod
+    , yesod-core
+    , yesod-form

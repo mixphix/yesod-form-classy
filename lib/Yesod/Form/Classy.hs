@@ -26,7 +26,8 @@ import Data.List.NonEmpty (NonEmpty (..), nonEmpty, toList)
 import Data.Map qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Yesod
+import Yesod.Core
+import Yesod.Form
 
 data Optionality
   = Required
